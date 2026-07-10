@@ -1,0 +1,33 @@
+# infra/terraform/backend/.gitignore
+# Applies to the backend Terraform stack only.
+# Root .gitignore covers repo-wide patterns.
+
+# Terraform working directory and provider binaries
+.terraform/
+
+# State files — never commit; managed by S3 remote backend
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Variable files with real values — use *.tfvars.example as templates
+!env/qa.tfvars
+!env/qa.tfvars.example
+!*.tfvars.example
+
+# Backend config files with environment-specific bucket/key values
+backend.s3.hcl
+backend.qa.s3.hcl
+backend.prd.s3.hcl
+
+# Terraform plan artifacts
+tfplan
+*.tfplan
+
+# Crash logs
+crash.log
+crash.*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db

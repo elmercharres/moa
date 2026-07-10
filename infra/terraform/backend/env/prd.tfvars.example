@@ -1,0 +1,120 @@
+aws_region       = "us-east-1"
+project_name     = "portal-creditos"
+environment      = "prd"
+application_name = "api"
+
+tag_application   = "Gestion-Crediticia"
+tag_area          = "Demanda"
+tag_risk          = "low"
+tag_requester     = "<MOA_REQUESTER>"
+tag_backup_policy = "NoBackup"
+tag_environment   = "PRD"
+tag_project       = "Portal-Creditos"
+tag_autopoweron   = "false"
+tag_autopoweroff  = "false"
+tag_costcenter    = "<MOA_COST_CENTER>"
+
+vpc_id = "<MOA_VPC_ID>"
+
+public_subnet_ids = [
+  "<MOA_INTERNAL_ALB_SUBNET_ID_A>",
+  "<MOA_INTERNAL_ALB_SUBNET_ID_B>"
+]
+
+private_subnet_ids = [
+  "<MOA_PRIVATE_SUBNET_ID_A>",
+  "<MOA_PRIVATE_SUBNET_ID_B>"
+]
+
+alb_ingress_cidr_blocks = [
+  "<MOA_CORPORATE_CIDR>"
+]
+
+load_balancer_internal = true
+
+certificate_arn = "<MOA_ACM_CERTIFICATE_ARN>"
+
+db_migrations_ecr_repository_name = "<MOA_CONFIRMED_DB_MIGRATIONS_ECR_NAME>"
+name_ecs_service                  = "<MOA_CONFIRMED_BACKEND_ECS_SERVICE_NAME>"
+name_ecs_task_def_api             = "<MOA_CONFIRMED_BACKEND_API_TASK_DEFINITION_NAME>"
+name_ecs_task_def_db              = "<MOA_CONFIRMED_DB_MIGRATIONS_TASK_DEFINITION_NAME>"
+name_sg_alb                       = "<MOA_CONFIRMED_BACKEND_ALB_SECURITY_GROUP_NAME>"
+name_iam_secrets_policy           = "<MOA_CONFIRMED_BACKEND_SECRETS_POLICY_NAME>"
+name_iam_exec_policy              = "<MOA_CONFIRMED_BACKEND_EXEC_POLICY_NAME>"
+name_iam_custom_policy            = "<MOA_CONFIRMED_BACKEND_CUSTOM_POLICY_NAME>"
+name_log_group_db_migrations      = "<MOA_CONFIRMED_DB_MIGRATIONS_LOG_GROUP_NAME>"
+
+aspnetcore_environment = "Production"
+
+container_port = null # MOA debe confirmar el puerto de contenedor PRD.
+
+jwt_issuer   = "<MOA_PRD_JWT_ISSUER>"
+jwt_audience = "<MOA_PRD_JWT_AUDIENCE>"
+
+cors_allowed_origins = [
+  "https://<MOA_FRONTEND_HOSTNAME>"
+]
+
+swagger_enabled = false
+
+database_seed_on_startup       = false
+credit_data_model_seed_enabled = false
+credit_data_model_seed_key     = "<MOA_PRD_CREDIT_DATA_MODEL_SEED_KEY>"
+
+desired_count = 2
+
+task_cpu    = null # MOA debe confirmar CPU PRD.
+task_memory = null # MOA debe confirmar memoria PRD.
+
+db_migrations_task_cpu    = null # MOA debe confirmar CPU PRD para Flyway.
+db_migrations_task_memory = null # MOA debe confirmar memoria PRD para Flyway.
+
+assign_public_ip       = false
+enable_execute_command = false
+
+autoscaling_enabled = true
+min_capacity        = null # MOA debe confirmar capacidad minima PRD.
+max_capacity        = null # MOA debe confirmar capacidad maxima PRD.
+
+cpu_target_value = null # MOA debe confirmar target CPU PRD.
+
+log_retention_days = 7
+
+ecr_image_tag_mutability = "IMMUTABLE"
+
+alb_deletion_protection = true
+
+cpu_architecture = null # MOA debe confirmar arquitectura CPU PRD.
+
+postgres_connection_string_secret_arn = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_POSTGRES>"
+
+jwt_signing_key_secret_arn = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_JWT>"
+
+flyway_url_secret_arn = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_URL>"
+
+flyway_user_secret_arn = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_USER>"
+
+flyway_password_secret_arn = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_PASSWORD>"
+
+seed_admin_email = ""
+
+seed_admin_display_name = ""
+
+seed_admin_password_secret_arn = ""
+
+additional_environment = {
+  "Sap__VerifySsl"                  = "<MOA_PRD_SAP_VERIFY_SSL>"
+  "Sap__TimeoutSeconds"             = "<MOA_PRD_SAP_TIMEOUT_SECONDS>"
+  "MotorDecisiones__ScoreApiUrl"    = "<MOA_PRD_MOTOR_DECISIONES_SCORE_API_URL>"
+  "MotorDecisiones__TimeoutSeconds" = "<MOA_PRD_MOTOR_DECISIONES_TIMEOUT_SECONDS>"
+}
+
+additional_secrets = {
+  "Sap__BaseUrl" = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_BASE_URL::"
+
+  "Sap__Username" = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_USERNAME::"
+
+  "Sap__Password" = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_PASSWORD::"
+
+  "MotorDecisiones__CallbackApiKey" = "arn:aws:secretsmanager:us-east-1:<MOA_ACCOUNT_ID>:secret:<MOA_MOTOR_DECISIONES_SECRET_NAME>:API_KEY::"
+}

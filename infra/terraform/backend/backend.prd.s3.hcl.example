@@ -1,0 +1,11 @@
+# backend.prd.s3.hcl — Backend API stack, ambiente PRD
+# Copiar a backend.prd.s3.hcl (sin .example) y confirmar valores con MOA.
+# Este archivo NO debe estar versionado en Git (.gitignore lo excluye).
+#
+# Key con el patrón confirmado por Infraestructura MOA — auditoría 2026-07-06, §14.
+# Bucket PRD debe ser confirmado por MOA Infraestructura (puede diferir del bucket QA).
+bucket         = "<MOA_PRD_TFSTATE_BUCKET>"
+key            = "portal-creditos-gestion-crediticia-backend-prd/terraform.tfstate"
+region         = "us-east-1"
+use_lockfile   = true
+encrypt        = true

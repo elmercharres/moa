@@ -1,0 +1,85 @@
+######################################################################
+# Terraform Variables Example
+#
+# Este archivo es únicamente un ejemplo.
+#
+# NO debe utilizarse directamente para desplegar infraestructura.
+#
+# Los valores reales deberán ser suministrados por el equipo de
+# Infraestructura de Molinos Agro (MOA) para cada ambiente.
+######################################################################
+
+# env/qa.tfvars.example — multi-environment override file for QA
+# The pipeline uses env/<env>.tfvars when present, falling back to TF_VAR_* variables.
+# Copy to env/qa.tfvars and fill real values. Never commit this file.
+# Variable names must match variables.tf exactly.
+# DO NOT use placeholder values in production deployments.
+
+aws_region   = "us-east-1"
+project_name     = "portal-creditos"
+environment      = "qa"
+application_name = "api"             # Identificador del componente: "api" para backend
+
+tag_application  = "Gestion-Crediticia"        # Official MOA Application value
+tag_area         = "Demanda"                   # Confirm with MOA Governance
+tag_risk         = "low"                       # Official MOA Risk value
+tag_requester    = "<MOA_REQUESTER>"    # Nombre del responsable del proyecto, provisto por MOA
+tag_backup_policy = "NoBackup"                 # Confirm with MOA Infrastructure: NoBackup / DiarioR7
+tag_environment  = "QA"                        # QA or PRD
+tag_project      = "Portal-Creditos"           # Confirm with MOA Governance
+tag_autopoweron  = "false"                     # Confirm with MOA Infrastructure: true / false
+tag_autopoweroff = "false"                     # Confirm with MOA Infrastructure: true / false
+tag_costcenter   = "<MOA_COST_CENTER>"  # OBLIGATORIO — provisto por MOA Finanzas
+
+vpc_id             = "<MOA_VPC_ID>"
+public_subnet_ids  = ["<MOA_PUBLIC_SUBNET_ID_A>", "<MOA_PUBLIC_SUBNET_ID_B>"]
+private_subnet_ids = ["<MOA_PRIVATE_SUBNET_ID_A>", "<MOA_PRIVATE_SUBNET_ID_B>"]
+
+alb_ingress_cidr_blocks = ["10.0.0.0/8"]
+load_balancer_internal  = true
+certificate_arn         = "<MOA_ACM_CERTIFICATE_ARN>"
+
+aspnetcore_environment = "QA"
+jwt_issuer             = "portal-creditos-qa"
+jwt_audience           = "portal-creditos-api"
+cors_allowed_origins   = ["https://<MOA_FRONTEND_HOSTNAME>"]
+swagger_enabled        = true
+
+database_seed_on_startup          = false
+credit_data_model_seed_enabled    = false
+credit_data_model_seed_key        = "phase-1"
+desired_count                     = 1
+task_cpu                          = 512
+task_memory                       = 1024
+db_migrations_task_cpu            = 256
+db_migrations_task_memory         = 512
+assign_public_ip                  = false
+enable_execute_command            = false
+autoscaling_enabled               = true
+min_capacity                      = 1
+max_capacity                      = 2
+cpu_target_value                  = 60
+
+postgres_connection_string_secret_arn = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_POSTGRES>"
+jwt_signing_key_secret_arn            = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_JWT>"
+flyway_url_secret_arn                 = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_URL>"
+flyway_user_secret_arn                = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_USER>"
+flyway_password_secret_arn            = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_PASSWORD>"
+
+seed_admin_email               = ""
+seed_admin_display_name        = ""
+seed_admin_password_secret_arn = ""
+
+additional_environment = {
+  "Sap__VerifySsl"                  = "false"
+  "Sap__TimeoutSeconds"             = "30"
+  "MotorDecisiones__ScoreApiUrl"    = "https://<MOA_MOTOR_DECISIONES_APIGW_ID>.execute-api.us-east-1.amazonaws.com/prod/v1/score"
+  "MotorDecisiones__TimeoutSeconds" = "30"
+}
+
+additional_secrets = {
+  "Sap__BaseUrl"  = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_BASE_URL::"
+  "Sap__Username" = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_USERNAME::"
+  "Sap__Password" = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_PASSWORD::"
+  "MotorDecisiones__CallbackApiKey" = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_MOTOR_DECISIONES_SECRET_NAME>:API_KEY::"
+}

@@ -1,0 +1,85 @@
+######################################################################
+# Terraform Variables Example
+#
+# Este archivo es únicamente un ejemplo.
+#
+# NO debe utilizarse directamente para desplegar infraestructura.
+#
+# Los valores reales deberán ser suministrados por el equipo de
+# Infraestructura de Molinos Agro (MOA) para cada ambiente.
+######################################################################
+
+# ===========================================================================
+# terraform.tfvars — Frontend Web stack (Portal Creditos)
+# Copy to terraform.tfvars or env/qa.tfvars and fill real values.
+# NEVER commit files with real values to Git.
+# ===========================================================================
+
+aws_region   = "us-east-1"
+project_name = "portal-creditos"
+environment  = "qa"
+service_name = "web"
+
+# MOA obligatory tags — confirm all values with MOA
+# DO NOT use placeholder values in production deployments
+tag_application  = "Gestion-Crediticia"        # Official MOA Application value
+tag_area         = "Demanda"                   # Confirm with MOA Governance
+tag_risk         = "low"                       # Official MOA Risk value
+tag_requester    = "<MOA_REQUESTER>"    # Nombre del responsable del proyecto, provisto por MOA
+tag_backup_policy = "NoBackup"                 # Confirm with MOA Infrastructure: NoBackup / DiarioR7
+tag_environment  = "QA"                        # QA or PRD
+tag_project      = "Portal-Creditos"           # Confirm with MOA Governance
+tag_autopoweron  = "false"                     # Confirm with MOA Infrastructure: true / false
+tag_autopoweroff = "false"                     # Confirm with MOA Infrastructure: true / false
+tag_costcenter   = "<MOA_COST_CENTER>"  # OBLIGATORIO: provisto por MOA Finanzas
+
+# Networking — obtain from MOA networking team
+vpc_id                   = "<MOA_VPC_ID>"
+load_balancer_subnet_ids = ["<MOA_PRIVATE_SUBNET_ID_A>", "<MOA_PRIVATE_SUBNET_ID_B>"]
+private_subnet_ids       = ["<MOA_PRIVATE_SUBNET_ID_A>", "<MOA_PRIVATE_SUBNET_ID_B>"]
+
+load_balancer_internal  = true
+alb_ingress_cidr_blocks = ["10.0.0.0/8"]
+certificate_arn         = "<MOA_ACM_CERTIFICATE_ARN>"
+
+# Nombres no confirmados explícitamente por la auditoría MOA.
+# Deben ser provistos por MOA antes de ejecutar plan/apply.
+name_ecs_service       = "<MOA_CONFIRMED_FRONTEND_ECS_SERVICE_NAME>"
+name_ecs_task_def      = "<MOA_CONFIRMED_FRONTEND_TASK_DEFINITION_NAME>"
+name_sg_alb            = "<MOA_CONFIRMED_FRONTEND_ALB_SECURITY_GROUP_NAME>"
+name_iam_exec_policy   = "<MOA_CONFIRMED_FRONTEND_EXEC_POLICY_NAME>"
+name_iam_custom_policy = "<MOA_CONFIRMED_FRONTEND_CUSTOM_POLICY_NAME>"
+
+container_port    = 8080
+health_check_path = "/health"
+
+desired_count          = 1
+task_cpu               = 256
+task_memory            = 512
+assign_public_ip       = false
+enable_execute_command = false
+autoscaling_enabled    = true
+min_capacity           = 1
+max_capacity           = 2
+cpu_target_value       = 60
+
+log_retention_days                = 7     # MOA proposal baseline
+health_check_grace_period_seconds = 60    # Increase if Nginx cold start > 1 min
+ecr_image_tag_mutability          = "IMMUTABLE"
+
+# Architecture — ARM64 (Graviton) saves ~20 % cost for equivalent Nginx workloads
+cpu_architecture = "X86_64"   # or ARM64
+
+# ALB hardening — enable in PRD after confirming no manual console deletes are needed
+alb_deletion_protection = false   # Set true in PRD
+
+# ---------------------------------------------------------------------------
+# Observability — optional; fill to enable encryption and access logs
+# ---------------------------------------------------------------------------
+log_kms_key_arn        = ""   # ARN of KMS key for CloudWatch Log Group encryption
+alb_access_logs_bucket = ""   # S3 bucket for ALB access logs (must have ELB service permissions)
+
+# Pipelines pass the real image URI after building and pushing the Angular/Nginx image.
+image_uri = ""
+
+additional_environment = {}

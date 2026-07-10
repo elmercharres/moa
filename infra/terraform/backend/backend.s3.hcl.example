@@ -1,0 +1,13 @@
+# DEPRECADO — usar backend.qa.s3.hcl.example o backend.prd.s3.hcl.example
+#
+# Este archivo genérico NO incluye el ambiente en la key y puede causar
+# colisión de estado entre QA y PRD. Se conserva como fallback de último
+# recurso; el pipeline prioriza backend.$(environmentName).s3.hcl.
+#
+# Key con el patrón confirmado por MOA — auditoría 2026-07-06, §14.
+# Este archivo genérico no incluye ambiente; usar los archivos por ambiente cuando sea posible.
+bucket         = "<MOA_TFSTATE_BUCKET>"
+key            = "portal-creditos-gestion-crediticia-backend-<AMBIENTE>/terraform.tfstate"
+region         = "us-east-1"
+use_lockfile   = true
+encrypt        = true

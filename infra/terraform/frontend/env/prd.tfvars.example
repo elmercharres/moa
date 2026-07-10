@@ -1,0 +1,75 @@
+aws_region   = "us-east-1"
+project_name = "portal-creditos"
+environment  = "prd"
+service_name = "web"
+
+tag_application   = "Gestion-Crediticia"
+tag_area          = "Demanda"
+tag_risk          = "low"
+tag_requester     = "<MOA_REQUESTER>"
+tag_backup_policy = "NoBackup"
+tag_environment   = "PRD"
+tag_project       = "Portal-Creditos"
+tag_autopoweron   = "false"
+tag_autopoweroff  = "false"
+tag_costcenter    = "<MOA_COST_CENTER>"
+
+vpc_id = "<MOA_VPC_ID>"
+
+load_balancer_subnet_ids = [
+  "<MOA_PRIVATE_SUBNET_ID_A>",
+  "<MOA_PRIVATE_SUBNET_ID_B>"
+]
+
+private_subnet_ids = [
+  "<MOA_PRIVATE_SUBNET_ID_A>",
+  "<MOA_PRIVATE_SUBNET_ID_B>"
+]
+
+load_balancer_internal = true
+
+alb_ingress_cidr_blocks = [
+  "<MOA_CORPORATE_CIDR>"
+]
+
+certificate_arn = "<MOA_ACM_CERTIFICATE_ARN>"
+
+name_ecs_service       = "<MOA_CONFIRMED_FRONTEND_ECS_SERVICE_NAME>"
+name_ecs_task_def      = "<MOA_CONFIRMED_FRONTEND_TASK_DEFINITION_NAME>"
+name_sg_alb            = "<MOA_CONFIRMED_FRONTEND_ALB_SECURITY_GROUP_NAME>"
+name_iam_exec_policy   = "<MOA_CONFIRMED_FRONTEND_EXEC_POLICY_NAME>"
+name_iam_custom_policy = "<MOA_CONFIRMED_FRONTEND_CUSTOM_POLICY_NAME>"
+
+container_port    = null # MOA debe confirmar el puerto de contenedor PRD.
+health_check_path = "<MOA_PRD_FRONTEND_HEALTH_CHECK_PATH>"
+
+desired_count = null # MOA debe confirmar desired_count PRD.
+
+task_cpu    = null # MOA debe confirmar CPU PRD.
+task_memory = null # MOA debe confirmar memoria PRD.
+
+assign_public_ip       = false
+enable_execute_command = false
+
+autoscaling_enabled = true
+min_capacity        = null # MOA debe confirmar capacidad minima PRD.
+max_capacity        = null # MOA debe confirmar capacidad maxima PRD.
+
+cpu_target_value = null # MOA debe confirmar target CPU PRD.
+
+log_retention_days = 7
+
+health_check_grace_period_seconds = null # MOA debe confirmar grace period PRD.
+
+ecr_image_tag_mutability = "IMMUTABLE"
+cpu_architecture         = null # MOA debe confirmar arquitectura CPU PRD.
+
+alb_deletion_protection = true
+
+log_kms_key_arn = "<MOA_LOG_KMS_KEY_ARN>"
+
+alb_access_logs_bucket = "<MOA_ALB_ACCESS_LOGS_BUCKET>"
+
+image_uri = "<MOA_ECR_IMAGE_URI>"
+
+additional_environment = {}

@@ -1,0 +1,145 @@
+######################################################################
+# Terraform Variables Example
+#
+# Este archivo es únicamente un ejemplo.
+#
+# NO debe utilizarse directamente para desplegar infraestructura.
+#
+# Los valores reales deberán ser suministrados por el equipo de
+# Infraestructura de Molinos Agro (MOA) para cada ambiente.
+######################################################################
+
+# ===========================================================================
+# terraform.tfvars — Backend API stack (Portal Creditos)
+# This is the only file that changes between deployments (MOA standard, Section 7).
+# Copy to terraform.tfvars or env/qa.tfvars and fill real values.
+# NEVER commit files with real secret ARNs or credential values to Git.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# AWS
+# ---------------------------------------------------------------------------
+aws_region = "us-east-1"
+
+# ---------------------------------------------------------------------------
+# Project identifiers
+# ---------------------------------------------------------------------------
+project_name     = "portal-creditos"
+environment      = "qa"
+application_name = "api"             # Identificador del componente: "api" para backend
+
+# ---------------------------------------------------------------------------
+# MOA obligatory tags (Section 6) — confirm ALL values with MOA before deploying
+# DO NOT use placeholder values in production deployments
+# ---------------------------------------------------------------------------
+tag_name         = ""
+tag_application  = "Gestion-Crediticia"        # Official MOA Application value
+tag_area         = "Demanda"                   # Confirm with MOA Governance
+tag_risk         = "low"                       # Official MOA Risk value
+tag_requester    = "<MOA_REQUESTER>"    # Nombre del responsable del proyecto, provisto por MOA
+tag_backup_policy = "NoBackup"                 # Confirm with MOA Infrastructure: NoBackup / DiarioR7
+tag_environment  = "QA"                        # QA or PRD
+tag_project      = "Portal-Creditos"           # Confirm with MOA Governance
+tag_autopoweron  = "false"                     # Confirm with MOA Infrastructure: true / false
+tag_autopoweroff = "false"                     # Confirm with MOA Infrastructure: true / false
+tag_costcenter   = "<MOA_COST_CENTER>"  # OBLIGATORIO — provisto por MOA Finanzas
+
+# ---------------------------------------------------------------------------
+# Networking — pre-existing resources; obtain IDs from MOA networking team
+# ---------------------------------------------------------------------------
+vpc_id             = "<MOA_VPC_ID>"
+public_subnet_ids  = ["<MOA_PUBLIC_SUBNET_ID_A>", "<MOA_PUBLIC_SUBNET_ID_B>"]
+private_subnet_ids = ["<MOA_PRIVATE_SUBNET_ID_A>", "<MOA_PRIVATE_SUBNET_ID_B>"]
+
+# Restrict to internal network ranges. Confirm CIDRs with MOA security team.
+alb_ingress_cidr_blocks = ["10.0.0.0/8"]
+load_balancer_internal  = true
+
+certificate_arn = "<MOA_ACM_CERTIFICATE_ARN>"
+
+# Nombres no confirmados explícitamente por la auditoría MOA.
+# Deben ser provistos por MOA antes de ejecutar plan/apply.
+db_migrations_ecr_repository_name = "<MOA_CONFIRMED_DB_MIGRATIONS_ECR_NAME>"
+name_ecs_service                  = "<MOA_CONFIRMED_BACKEND_ECS_SERVICE_NAME>"
+name_ecs_task_def_api             = "<MOA_CONFIRMED_BACKEND_API_TASK_DEFINITION_NAME>"
+name_ecs_task_def_db              = "<MOA_CONFIRMED_DB_MIGRATIONS_TASK_DEFINITION_NAME>"
+name_sg_alb                       = "<MOA_CONFIRMED_BACKEND_ALB_SECURITY_GROUP_NAME>"
+name_iam_secrets_policy           = "<MOA_CONFIRMED_BACKEND_SECRETS_POLICY_NAME>"
+name_iam_exec_policy              = "<MOA_CONFIRMED_BACKEND_EXEC_POLICY_NAME>"
+name_iam_custom_policy            = "<MOA_CONFIRMED_BACKEND_CUSTOM_POLICY_NAME>"
+name_log_group_db_migrations      = "<MOA_CONFIRMED_DB_MIGRATIONS_LOG_GROUP_NAME>"
+
+# ---------------------------------------------------------------------------
+# Application settings
+# ---------------------------------------------------------------------------
+aspnetcore_environment = "QA"
+jwt_issuer             = "portal-creditos-qa"  # Set per environment
+jwt_audience           = "portal-creditos-api"
+cors_allowed_origins   = ["https://<MOA_FRONTEND_HOSTNAME>"]
+swagger_enabled        = true
+
+database_seed_on_startup       = false
+credit_data_model_seed_enabled = false
+credit_data_model_seed_key     = "phase-1"
+
+desired_count             = 1
+task_cpu                  = 512
+task_memory               = 1024
+db_migrations_task_cpu    = 256
+db_migrations_task_memory = 512
+assign_public_ip          = false
+enable_execute_command    = false
+autoscaling_enabled       = true
+min_capacity              = 1
+max_capacity              = 2
+cpu_target_value          = 60
+
+log_retention_days                = 7     # MOA proposal baseline
+health_check_grace_period_seconds = 120   # Increase if ASP.NET cold start > 2 min
+ecr_image_tag_mutability          = "IMMUTABLE"
+flyway_baseline_on_migrate        = true  # Set false after first successful migration
+
+# Architecture — ARM64 (Graviton) saves ~20 % cost for equivalent .NET workloads
+cpu_architecture = "X86_64"   # or ARM64
+
+# ALB hardening — enable in PRD after confirming no manual console deletes are needed
+alb_deletion_protection = false   # Set true in PRD
+
+# ---------------------------------------------------------------------------
+# Observability — optional; fill to enable encryption and access logs
+# ---------------------------------------------------------------------------
+log_kms_key_arn        = ""   # ARN of KMS key for CloudWatch Log Group encryption
+alb_access_logs_bucket = ""   # S3 bucket for ALB access logs (must have ELB service permissions)
+
+# ---------------------------------------------------------------------------
+# Secrets — store ARNs only; never paste secret values here
+# Obtain ARNs from MOA or the secrets owner for each environment
+# ---------------------------------------------------------------------------
+postgres_connection_string_secret_arn = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_POSTGRES>"
+jwt_signing_key_secret_arn            = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_JWT>"
+flyway_url_secret_arn                 = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_URL>"
+flyway_user_secret_arn                = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_USER>"
+flyway_password_secret_arn            = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SECRET_NAME_FLYWAY_PASSWORD>"
+
+# Optional — seed admin bootstrap (disable in production)
+seed_admin_email               = ""
+seed_admin_display_name        = ""
+seed_admin_password_secret_arn = ""
+
+# ---------------------------------------------------------------------------
+# SAP integration — non-sensitive settings as plain env vars
+# ---------------------------------------------------------------------------
+additional_environment = {
+  "Sap__VerifySsl"                   = "false"
+  "Sap__TimeoutSeconds"              = "30"
+  "MotorDecisiones__ScoreApiUrl"     = "https://<MOA_MOTOR_DECISIONES_APIGW_ID>.execute-api.us-east-1.amazonaws.com/prod/v1/score"
+  "MotorDecisiones__TimeoutSeconds"  = "30"
+}
+
+# SAP and motor de decisiones secrets — use :KEY:: suffix to extract JSON keys
+additional_secrets = {
+  "Sap__BaseUrl"  = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_BASE_URL::"
+  "Sap__Username" = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_USERNAME::"
+  "Sap__Password" = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_SAP_SECRET_NAME>:SAP_PASSWORD::"
+  "MotorDecisiones__CallbackApiKey" = "arn:aws:secretsmanager:<MOA_REGION>:<MOA_ACCOUNT_ID>:secret:<MOA_MOTOR_DECISIONES_SECRET_NAME>:API_KEY::"
+}
