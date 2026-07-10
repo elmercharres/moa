@@ -1,0 +1,379 @@
+# Azure DevOps pipeline for Portal Creditos Infrastructure as Code.
+# This pipeline is the only owner of Terraform changes. Backend and frontend
+# release pipelines only publish images and update ECS services.
+#
+# MOA_TODO: Create these Azure DevOps variable groups before running IaC:
+# - portal-creditos-iac-qa
+# - portal-creditos-iac-prod
+#
+# MOA_TODO: Required before running IaC:
+# - AWS Service Connection with OIDC/role federation, provided by MOA DevOps/Security.
+#
+# Secret ownership model:
+# - Database/Flyway: own Secrets Manager or SSM entries per environment.
+# - SAP: own JSON secret with SAP_BASE_URL, SAP_USERNAME and SAP_PASSWORD.
+# - Motor: own JSON secret for callback/API Gateway keys, not mixed with DB/JWT/SMTP.
+# - JWT/SMTP/admin bootstrap: own secrets if enabled.
+# Backend and frontend release pipelines must not carry these runtime secret values.
+#
+# MOA_TODO: Terraform backend config must exist in the repo or be added by a secure-file step:
+# - Backend stack:  infra/terraform/backend/backend.<env>.s3.hcl  or  infra/terraform/backend/backend.s3.hcl
+# - Frontend stack: infra/terraform/frontend/backend.<env>.hcl     or  infra/terraform/frontend/backend.hcl
+
+trigger: none
+pr: none
+
+parameters:
+  - name: targetEnvironment
+    displayName: Target environment
+    type: string
+    default: qa
+    values:
+      - qa
+      - prod
+  - name: stack
+    displayName: Terraform stack
+    type: string
+    default: all
+    values:
+      - all
+      - backend
+      - frontend
+  - name: terraformAction
+    displayName: Terraform action
+    type: string
+    default: plan
+    values:
+      - plan
+      - apply
+  - name: awsServiceConnection
+    displayName: AWS Service Connection supplied by MOA
+    type: string
+    default: '<MOA_AWS_SERVICE_CONNECTION>'
+
+variables:
+  # MOA_TODO: Confirm AWS region with MOA.
+  - name: awsRegion
+    value: 'us-east-1'
+  - name: terraformVersion
+    value: '1.10.0'
+  # MOA_TODO: Confirm project and client tag defaults with MOA.
+  - name: projectName
+    value: 'portal-creditos'
+  - name: clientProjectTag
+    value: 'Portal-Creditos'
+  - name: clientApplicationTag
+    value: 'Gestion-Crediticia'
+  - name: clientAreaTag
+    value: 'Demanda'
+  # MOA_TODO: Confirm Risk value: high, medium or low.
+  - name: clientRiskTag
+    value: 'low'
+  - name: clientRequesterTag
+    value: 'Fernando Ponce De Leon'
+  # MOA_TODO: Confirm BackupPolicy value: NoBackup or DiarioR7.
+  - name: clientBackupPolicyTag
+    value: 'NoBackup'
+  # MOA required tags — Autopoweron, Autopoweroff and Costcenter (Section 6)
+  - name: clientAutopoweron
+    value: 'false'
+  - name: clientAutopoweroff
+    value: 'false'
+  # OBLIGATORIO: El valor del Costcenter debe ser provisto por MOA Finanzas antes de cualquier apply.
+  # No usar '000000' ni valores de prueba. Completar en el Variable Group del ambiente correspondiente.
+  - name: clientCostcenter
+    value: ''   # PENDIENTE DE SER PROVISTO POR MOA FINANZAS
+  # ECR repository names are auto-computed from MOA naming convention in locals.tf.
+  # Set a non-empty value only to override the computed name.
+  - name: backendEcrRepositoryName
+    value: ''
+  - name: backendDbMigrationsEcrRepositoryName
+    value: ''
+  - name: frontendEcrRepositoryName
+    value: ''
+  - name: frontendServiceName
+    value: 'web'
+  # MOA_TODO: Required backend network and secret values if no backend tfvars file is present.
+  - name: backendTfVarVpcId
+    value: ''
+  # MOA_TODO: ALB subnet ids. For VPN/private access, MOA should provide private subnet ids here.
+  - name: backendTfVarPublicSubnetIds
+    value: '[]'
+  - name: backendTfVarPrivateSubnetIds
+    value: '[]'
+  # MOA_TODO: Confirm backend ALB exposure and allowed CIDRs with MOA networking/security team.
+  - name: backendTfVarLoadBalancerInternal
+    value: 'true'
+  - name: backendTfVarAlbIngressCidrBlocks
+    value: '["10.0.0.0/8"]'
+  # MOA_TODO: Fill with Secrets Manager or SSM parameter ARNs for backend runtime.
+  # Keep these values as ARN references only. Do not paste secret values in YAML.
+  - name: backendTfVarPostgresConnectionStringSecretArn
+    value: ''
+  - name: backendTfVarJwtSigningKeySecretArn
+    value: ''
+  - name: backendTfVarFlywayUrlSecretArn
+    value: ''
+  - name: backendTfVarFlywayUserSecretArn
+    value: ''
+  - name: backendTfVarFlywayPasswordSecretArn
+    value: ''
+  # MOA_TODO: Optional backend values; fill if the environment requires them.
+  - name: backendTfVarSeedAdminPasswordSecretArn
+    value: ''
+  - name: backendTfVarCorsAllowedOrigins
+    value: '[]'
+  - name: backendTfVarCertificateArn
+    value: ''
+  - name: backendTfVarAdditionalEnvironment
+    value: '{}'
+  # MOA_TODO: Put additional sensitive backend mappings here as JSON:
+  # SAP -> Sap__BaseUrl/Sap__Username/Sap__Password from the SAP JSON secret.
+  # Motor -> MotorDecisiones__CallbackApiKey/MotorDecisiones__ScoreApiKey from the Motor JSON secret.
+  # SMTP -> Notifications__Smtp__Username/Notifications__Smtp__Password from an SMTP secret, if enabled.
+  - name: backendTfVarAdditionalSecrets
+    value: '{}'
+  # MOA_TODO: Required frontend network values if no frontend tfvars file is present.
+  - name: frontendTfVarVpcId
+    value: ''
+  - name: frontendTfVarLoadBalancerSubnetIds
+    value: '[]'
+  - name: frontendTfVarPrivateSubnetIds
+    value: '[]'
+  # MOA_TODO: Confirm ingress CIDRs with MOA networking/security team.
+  # Must match the corporate VPN or internal network range. Do NOT use 0.0.0.0/0 (frontend ALB is internal).
+  - name: frontendTfVarAlbIngressCidrBlocks
+    value: '["10.0.0.0/8"]'
+  # MOA_TODO: Optional frontend values; fill if HTTPS or custom task policy is required.
+  - name: frontendTfVarCertificateArn
+    value: ''
+  - name: frontendTfVarTaskRolePolicyJson
+    value: ''
+  - group: 'portal-creditos-iac-${{ parameters.targetEnvironment }}'
+  - name: environmentName
+    value: '${{ parameters.targetEnvironment }}'
+  - ${{ if eq(parameters.targetEnvironment, 'qa') }}:
+      - name: aspnetcoreEnvironment
+        value: 'QA'
+      - name: clientEnvironmentTag
+        value: 'QA'
+  - ${{ if eq(parameters.targetEnvironment, 'prod') }}:
+      - name: aspnetcoreEnvironment
+        value: 'Production'
+      - name: clientEnvironmentTag
+        value: 'PRD'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: terraform
+    displayName: Terraform ${{ parameters.terraformAction }} ${{ parameters.targetEnvironment }}
+    jobs:
+      - deployment: iac
+        displayName: Deploy Infrastructure
+        environment: 'portal-creditos-iac-${{ parameters.targetEnvironment }}'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - bash: |
+                    set -euo pipefail
+                    sudo apt-get update -y
+                    sudo apt-get install -y curl unzip jq
+                    curl -fsSLo terraform.zip "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip"
+                    sudo unzip -o terraform.zip -d /usr/local/bin
+                    terraform -version
+                  displayName: Install Terraform
+
+                - ${{ if or(eq(parameters.stack, 'all'), eq(parameters.stack, 'backend')) }}:
+                    - task: AWSShellScript@1
+                      displayName: Backend Terraform ${{ parameters.terraformAction }}
+                      inputs:
+                        awsCredentials: '${{ parameters.awsServiceConnection }}'
+                        regionName: '$(awsRegion)'
+                        scriptType: inline
+                        inlineScript: |
+                          set -euo pipefail
+                          cd "$(Build.SourcesDirectory)/infra/terraform/backend"
+                          BACKEND_ENV_PATH="backend.$(environmentName).s3.hcl"
+                          BACKEND_DEFAULT_PATH="backend.s3.hcl"
+                          TFVARS_STD_PATH="terraform.tfvars"
+                          TFVARS_ENV_PATH="env/$(environmentName).tfvars"
+
+                          if [ -f "$BACKEND_ENV_PATH" ]; then
+                            BACKEND_CONFIG_ARG="-backend-config=$BACKEND_ENV_PATH"
+                          elif [ -f "$BACKEND_DEFAULT_PATH" ]; then
+                            BACKEND_CONFIG_ARG="-backend-config=$BACKEND_DEFAULT_PATH"
+                          else
+                            echo "Missing Terraform backend config: $BACKEND_ENV_PATH or $BACKEND_DEFAULT_PATH" >&2
+                            exit 1
+                          fi
+
+                          # MOA standard: terraform.tfvars at root is the primary file (Section 7)
+                          if [ -f "$TFVARS_STD_PATH" ]; then
+                            VAR_FILE_ARG="-var-file=$TFVARS_STD_PATH"
+                          elif [ -f "$TFVARS_ENV_PATH" ]; then
+                            VAR_FILE_ARG="-var-file=$TFVARS_ENV_PATH"
+                          else
+                            echo "No tfvars file found at $TFVARS_STD_PATH or $TFVARS_ENV_PATH; using TF_VAR_* variables."
+                            missing=0
+                            check_required() {
+                              local name="$1"
+                              local value="$2"
+                              if [ -z "$value" ] || [ "$value" = "[]" ]; then
+                                echo "Missing required variable: $name" >&2
+                                missing=1
+                              fi
+                            }
+                            check_required "backendTfVarVpcId" "$(backendTfVarVpcId)"
+                            check_required "backendTfVarPublicSubnetIds" "$(backendTfVarPublicSubnetIds)"
+                            check_required "backendTfVarPrivateSubnetIds" "$(backendTfVarPrivateSubnetIds)"
+                            check_required "backendTfVarPostgresConnectionStringSecretArn" "$(backendTfVarPostgresConnectionStringSecretArn)"
+                            check_required "backendTfVarJwtSigningKeySecretArn" "$(backendTfVarJwtSigningKeySecretArn)"
+                            check_required "backendTfVarFlywayUrlSecretArn" "$(backendTfVarFlywayUrlSecretArn)"
+                            check_required "backendTfVarFlywayUserSecretArn" "$(backendTfVarFlywayUserSecretArn)"
+                            check_required "backendTfVarFlywayPasswordSecretArn" "$(backendTfVarFlywayPasswordSecretArn)"
+                            if [ "$missing" -ne 0 ]; then
+                              exit 1
+                            fi
+                            VAR_FILE_ARG=""
+                          fi
+
+                          terraform fmt -check
+                          terraform init -input=false $BACKEND_CONFIG_ARG
+                          terraform validate
+                          terraform plan -input=false $VAR_FILE_ARG -out=tfplan
+
+                          if [ "${{ parameters.terraformAction }}" = "apply" ]; then
+                            terraform apply -input=false -auto-approve tfplan
+                            terraform output
+                          else
+                            terraform show -no-color tfplan
+                          fi
+                      env:
+                        AWS_REGION: $(awsRegion)
+                        AWS_DEFAULT_REGION: $(awsRegion)
+                        TF_IN_AUTOMATION: 'true'
+                        TF_INPUT: '0'
+                        TF_VAR_aws_region: $(awsRegion)
+                        TF_VAR_project_name: $(projectName)
+                        TF_VAR_environment: $(environmentName)
+                        TF_VAR_tag_project: $(clientProjectTag)
+                        TF_VAR_tag_application: $(clientApplicationTag)
+                        TF_VAR_tag_area: $(clientAreaTag)
+                        TF_VAR_tag_risk: $(clientRiskTag)
+                        TF_VAR_tag_requester: $(clientRequesterTag)
+                        TF_VAR_tag_backup_policy: $(clientBackupPolicyTag)
+                        TF_VAR_tag_environment: $(clientEnvironmentTag)
+                        TF_VAR_tag_autopoweron: $(clientAutopoweron)
+                        TF_VAR_tag_autopoweroff: $(clientAutopoweroff)
+                        TF_VAR_tag_costcenter: $(clientCostcenter)
+                        TF_VAR_ecr_repository_name: $(backendEcrRepositoryName)
+                        TF_VAR_db_migrations_ecr_repository_name: $(backendDbMigrationsEcrRepositoryName)
+                        TF_VAR_aspnetcore_environment: $(aspnetcoreEnvironment)
+                        TF_VAR_vpc_id: $(backendTfVarVpcId)
+                        TF_VAR_public_subnet_ids: $(backendTfVarPublicSubnetIds)
+                        TF_VAR_private_subnet_ids: $(backendTfVarPrivateSubnetIds)
+                        TF_VAR_load_balancer_internal: $(backendTfVarLoadBalancerInternal)
+                        TF_VAR_alb_ingress_cidr_blocks: $(backendTfVarAlbIngressCidrBlocks)
+                        TF_VAR_postgres_connection_string_secret_arn: $(backendTfVarPostgresConnectionStringSecretArn)
+                        TF_VAR_jwt_signing_key_secret_arn: $(backendTfVarJwtSigningKeySecretArn)
+                        TF_VAR_flyway_url_secret_arn: $(backendTfVarFlywayUrlSecretArn)
+                        TF_VAR_flyway_user_secret_arn: $(backendTfVarFlywayUserSecretArn)
+                        TF_VAR_flyway_password_secret_arn: $(backendTfVarFlywayPasswordSecretArn)
+                        TF_VAR_seed_admin_password_secret_arn: $(backendTfVarSeedAdminPasswordSecretArn)
+                        TF_VAR_cors_allowed_origins: $(backendTfVarCorsAllowedOrigins)
+                        TF_VAR_certificate_arn: $(backendTfVarCertificateArn)
+                        TF_VAR_additional_environment: $(backendTfVarAdditionalEnvironment)
+                        TF_VAR_additional_secrets: $(backendTfVarAdditionalSecrets)
+
+                - ${{ if or(eq(parameters.stack, 'all'), eq(parameters.stack, 'frontend')) }}:
+                    - task: AWSShellScript@1
+                      displayName: Frontend Terraform ${{ parameters.terraformAction }}
+                      inputs:
+                        awsCredentials: '${{ parameters.awsServiceConnection }}'
+                        regionName: '$(awsRegion)'
+                        scriptType: inline
+                        inlineScript: |
+                          set -euo pipefail
+                          cd "$(Build.SourcesDirectory)/infra/terraform/frontend"
+
+                          BACKEND_ENV_PATH="backend.$(environmentName).hcl"
+                          BACKEND_DEFAULT_PATH="backend.hcl"
+                          TFVARS_PATH="env/$(environmentName).tfvars"
+                          DEFAULT_TFVARS_PATH="terraform.tfvars"
+
+                          if [ -f "$BACKEND_ENV_PATH" ]; then
+                            BACKEND_CONFIG_ARG="-backend-config=$BACKEND_ENV_PATH"
+                          elif [ -f "$BACKEND_DEFAULT_PATH" ]; then
+                            BACKEND_CONFIG_ARG="-backend-config=$BACKEND_DEFAULT_PATH"
+                          else
+                            echo "Missing Terraform backend config: $BACKEND_ENV_PATH or $BACKEND_DEFAULT_PATH" >&2
+                            exit 1
+                          fi
+
+                          # MOA standard: terraform.tfvars at root is the primary file (Section 7)
+                          if [ -f "$DEFAULT_TFVARS_PATH" ]; then
+                            VAR_FILE_ARG="-var-file=$DEFAULT_TFVARS_PATH"
+                          elif [ -f "$TFVARS_PATH" ]; then
+                            VAR_FILE_ARG="-var-file=$TFVARS_PATH"
+                          else
+                            echo "No frontend tfvars file found; using TF_VAR_* variables."
+                            missing=0
+                            check_required() {
+                              local name="$1"
+                              local value="$2"
+                              if [ -z "$value" ] || [ "$value" = "[]" ]; then
+                                echo "Missing required variable: $name" >&2
+                                missing=1
+                              fi
+                            }
+                            check_required "frontendTfVarVpcId" "$(frontendTfVarVpcId)"
+                            check_required "frontendTfVarLoadBalancerSubnetIds" "$(frontendTfVarLoadBalancerSubnetIds)"
+                            check_required "frontendTfVarPrivateSubnetIds" "$(frontendTfVarPrivateSubnetIds)"
+                            if [ "$missing" -ne 0 ]; then
+                              exit 1
+                            fi
+                            VAR_FILE_ARG=""
+                          fi
+
+                          terraform fmt -check
+                          terraform init -input=false $BACKEND_CONFIG_ARG
+                          terraform validate
+                          terraform plan -input=false $VAR_FILE_ARG -out=tfplan
+
+                          if [ "${{ parameters.terraformAction }}" = "apply" ]; then
+                            terraform apply -input=false -auto-approve tfplan
+                            terraform output
+                          else
+                            terraform show -no-color tfplan
+                          fi
+                      env:
+                        AWS_REGION: $(awsRegion)
+                        AWS_DEFAULT_REGION: $(awsRegion)
+                        TF_IN_AUTOMATION: 'true'
+                        TF_INPUT: '0'
+                        TF_VAR_aws_region: $(awsRegion)
+                        TF_VAR_project_name: $(projectName)
+                        TF_VAR_environment: $(environmentName)
+                        TF_VAR_tag_project: $(clientProjectTag)
+                        TF_VAR_tag_application: $(clientApplicationTag)
+                        TF_VAR_tag_area: $(clientAreaTag)
+                        TF_VAR_tag_risk: $(clientRiskTag)
+                        TF_VAR_tag_requester: $(clientRequesterTag)
+                        TF_VAR_tag_backup_policy: $(clientBackupPolicyTag)
+                        TF_VAR_tag_environment: $(clientEnvironmentTag)
+                        TF_VAR_tag_autopoweron: $(clientAutopoweron)
+                        TF_VAR_tag_autopoweroff: $(clientAutopoweroff)
+                        TF_VAR_tag_costcenter: $(clientCostcenter)
+                        TF_VAR_service_name: $(frontendServiceName)
+                        TF_VAR_ecr_repository_name: $(frontendEcrRepositoryName)
+                        TF_VAR_vpc_id: $(frontendTfVarVpcId)
+                        TF_VAR_load_balancer_subnet_ids: $(frontendTfVarLoadBalancerSubnetIds)
+                        TF_VAR_private_subnet_ids: $(frontendTfVarPrivateSubnetIds)
+                        TF_VAR_alb_ingress_cidr_blocks: $(frontendTfVarAlbIngressCidrBlocks)
+                        TF_VAR_certificate_arn: $(frontendTfVarCertificateArn)
+                        TF_VAR_task_role_policy_json: $(frontendTfVarTaskRolePolicyJson)

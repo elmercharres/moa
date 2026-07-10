@@ -1,0 +1,13 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+backend.s3.hcl
+crash.log
+crash.*.log
+.env
+.DS_Store
+Thumbs.db
+MOA-INFRA-Terraform-Best-Practices v1.3.pdf
+MOA_INFRA_Auditoria_Portal-Creditos_2026-07-06.pdf
